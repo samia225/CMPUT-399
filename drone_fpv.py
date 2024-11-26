@@ -221,32 +221,52 @@ class BulletCameraDevice:
 camera = BulletCameraDevice(
     z_near=0.1, 
     z_far=100, 
-    res_w=640, 
+    res_w=300, 
     res_h=480, 
     fov_w=60.0
 )
 
+fps = 30  # Frames per second
+menu_interval = 4  # Interval in seconds to ask the user for a choice
+last_menu_time = time.time()
 
-fps = 30
-velocity = user_menu()  # Get initial velocity using user menu
+velocity = user_menu()  # Initial velocity selection
+print("Starting simulation with velocity:", velocity)
 
 while True:
-    
+    # Update the drone's state
     update_drone_state(state, velocity)
     p.stepSimulation()
+    time.sleep(1.0 / fps)  # Maintain simulation speed at 30 FPS
 
-    
-    pos, orn = p.getBasePositionAndOrientation(drone)
+    # Update the camera view
+    pos, orn = p.getBasePositionAndOrientation(drone)  # Get drone's position and orientation
     view_matrix = compute_view_matrix_from_cam_location(cam_pos=pos, cam_quat=orn)
     rgb_image, depth_map, mask = camera.cam_capture(view_matrix)
 
-
+    # Display the camera feed
     import matplotlib.pyplot as plt
     plt.imshow(rgb_image)
     plt.axis("off")
     plt.pause(0.001)
 
+    # Check if the menu interval has elapsed
+    if time.time() - last_menu_time >= menu_interval:
+        print("\nMenu interval reached. Do you want to:")
+        print("1. Continue with the current state")
+        print("2. Open the menu to change movement")
+        user_choice = input("Enter your choice (1/2): ")
+
+        if user_choice == "2":
+            velocity = user_menu()  # Open the menu and get a new velocity
+        elif user_choice != "1":
+            print("Invalid choice. Continuing with the current state.")
+
+        last_menu_time = time.time()  # Reset the timer
+
+    # Exit condition
     if input("Press 'q' to quit or Enter to continue: ").lower() == 'q':
+        print("Exiting simulation.")
         break
 
 p.disconnect()
